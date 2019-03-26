@@ -1,6 +1,6 @@
 # safesync
 
-> This script is for Manjaro systems on which configures/creates or tests system's mirrorlist.
+> This script is for *Manjaro* systems on which configures/creates or tests system's mirrorlist.
 It can also change the active mirror in mirrorlist ("on-the-fly"), protecting from selecting an unsafe mirror.
 (Acts like Manjaro `pacman-mirrors`, from a different perspective)
 
@@ -33,18 +33,25 @@ Checks current system's mirrorlist servers repo DBs timestamp and
 
 Tests mirror servers for speed or whatever (WIP), similarly to `--init`
 
-The scope is to always have ONLY ONE active server in the mirrorlist and only change it when needed (server is down, need the latest Manjaro updates as soon as posible etc.).
+## Scope and perspective
+The perspective used for a proper and safe package update, avoiding accidental partial updates is to *always have ONLY ONE active server in the mirrorlist and only change it when needed* (server is not responding, need of the latest Manjaro updates as soon as posible etc.). The problem arises when your current active mirror has temporary problems. If there are more than one servers in the mirrorlist, pacman uses the next one. During this change, it is not checked whether the new assigned server has the same update status as the default one (at least, this is what I think, since I haven't read or heard it is; I would be happy if I find out I was wrong!). Manjaro mirror servers have various update/sync frequencies. Some update every hour (or less) while others once a day, depending on the providers. In case you configure your mirrors depending on their up-to-date status, you may have different results depending on the time of configuration and the chosen mirrors/countries. For example: 
 
-You keep/maintain your preffered mirror servers in the standard pacman mirrorlist, with all except one commented out.
+A (the) Greek mirror syncs once a day at about 12:00 UTC, while a french mirror every one hour. 
 
-This way, your system will either update safely, or not at all, in which case you can change the active server, only if/when you need to.
+* If I run `pacman mirrors` or check on the repo webpage at 14:00 UTC, I will choose the Greek server as it will be up-to-date and since it's the nearest to me, it's my best choice for speed, as well as the French mirror, but because the French mirror is faster, it goes at the top of the mirrorlist (if I rank for speed), with the Greek one as second. 
+* Then there is a Manjaro update at 22:00 UTC and I update my system at 24:00 UTC (using the French mirror).
+* Next day at about 08:00-10:00 UTC, I try to install a new package or update the system. If at that time the French mirror is not responding, `pacman` will fallback to the Greek mirror, which has older packages. If you don't use `-y` pacman parameter, you will not even notice an error message for "local packages are newer than remote ones" and you will get into a "partially updated" system!!
 
-A possible workfrlow for using safesync as your main mirrorlist maintenance tool can be:
+With SafeSync method, you are supposed to have only one enabled mirror in the mirrorlist. Then, whenever the server is unusable, you run `safesync --next` and in a few seconds you have the fastest and sefest (for your system) mirror enabled, while the _unsafe_ mirror is disabled. Also, if you always use this command before any system or package syncing action, you will always be sure you will *never* have a _partially updated_ system!
+
+You may use safesync either in your manually configured mirrorlist, or even in combination with a `pacman-mirrors` created one, or of course... exclusively, as it can create a preferred servers list in a very easy interactive procedure, with 9 prefixed country groups (by regions) and a choice to just enter a group number, or enter country names (with or without capitalization format, or spaces, or underscores), or a combination of both. You may write the result to pacman mirrorlist (getting root privileges), keeping a copy of the old one, or save locally and use it as you like.
+
+A possible workflow for using safesync as your main mirrorlist maintenance tool can be:
 1. Create your mirrorlist initially, choosing from any available countries in repo.manjaro.org. (`--init`). This will save a sorted list of servers by speed (fastest first) and enable the first one.
 2. After initial creation, run `--next` to verify the active server is _safe_ (DBs are same or newer than your current local DBs). If not, it will disable the current (_unsafe_) and enable the _next safe_ server.
 3. That's it, until you notice pacman reporting unable to update, or very slow downloads etc. If you decide to change the active server, only run `--next` and check again with `pacman`.
 
-For whoever finds this usefull, I will be happy. For the rest, do your maintenance however you prefer.
+For whoever finds this useful, I will be happy. For the rest, do your maintenance however you prefer.
 
 Please report any bugs and ideas for relevant useful improvements and features.
 

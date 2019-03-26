@@ -4,6 +4,13 @@
 It can also change the active mirror in mirrorlist ("on-the-fly"), protecting from selecting an unsafe mirror.
 (Acts like Manjaro `pacman-mirrors`, from a different perspective)
 
+### Dependencies
+* bash :)
+* jq
+* curl (required by pacman too)
+* awk, grep, (included in `base/base-devel`)
+* polkit (optional for writing system mirrorlist with `pkexec`)
+
 ```
 Safesync creates Manjaro mirrorlist and changes mirrors safely
     Options:

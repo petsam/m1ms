@@ -68,9 +68,9 @@ elif [ $1 = "-i" ] || [ $1 = "--init" ]; then
     echo "Starting creation of mirrorlist"
     # Create work directory
 	if [ -w /tmp ];then
-		WorkDir=/tmp/$0-$(date +%s)
+		WorkDir=/tmp/safesync-$(date +%s)
 	else
-		WorkDir=$HOME/.local/tmp/$0-$(date +%s)
+		WorkDir=$HOME/.local/tmp/safesync-$(date +%s)
 	fi
 	mkdir -p "$WorkDir"
 	# WorkDir="$WorkDir"\/
@@ -152,9 +152,9 @@ elif [ $1 = "-t" ] || [ $1 = "--test" ]; then
 
     # Create work directory
 	if [ -w /tmp ];then
-		WorkDir=/tmp/$0-$(date +%s)
+		WorkDir=/tmp/safesync-$(date +%s)
 	else
-		WorkDir=$HOME/.local/tmp/$0-$(date +%s)
+		WorkDir=$HOME/.local/tmp/safesync-$(date +%s)
 	fi
 	mkdir -p "$WorkDir"
 	# WorkDir="$WorkDir"\/

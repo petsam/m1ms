@@ -57,7 +57,8 @@ DBRepos=$(for r in $(ls /var/lib/pacman/sync/*.db); do repo=${r##*/}; echo  ${re
 # TODO add option parameter for a custom/local mirrorlist to test (--test)
 #MirrorList=mirrorlist
 MirrorList=/etc/pacman.d/mirrorlist
-
+SysBranch=$(grep -v ^# /etc/pacman.d/mirrorlist | grep -wo -m1 -E "stable|testing|unstable")
+echo "System Branch is $SysBranch"
 
 # Check for given command line parameters
 if [ $# -eq 0 ]; then
@@ -73,8 +74,13 @@ elif [ $1 = "-i" ] || [ $1 = "--init" ]; then
 		WorkDir=$HOME/.local/tmp/safesync-$(date +%s)
 	fi
 	mkdir -p "$WorkDir"
-	# WorkDir="$WorkDir"\/
-	echo "Created working directory :" "$WorkDir"
+	if [ -d "$WorkDir" ]; then
+		echo "Created working directory :" "$WorkDir"
+	else
+		echo "Could not create working dir " "$WorkDir" " Permissions problem?"
+		echo "Exiting..."
+		exit;
+	fi
 	cd $WorkDir
 elif [ $1 = "-n" ] || [ $1 = "--next" ]; then
     PConfRepos=$(grep -v ^# /etc/pacman.conf | grep -F [ | grep -v options)
@@ -157,8 +163,14 @@ elif [ $1 = "-t" ] || [ $1 = "--test" ]; then
 		WorkDir=$HOME/.local/tmp/safesync-$(date +%s)
 	fi
 	mkdir -p "$WorkDir"
-	# WorkDir="$WorkDir"\/
-	echo "Created working directory :" "$WorkDir"
+	if [ -d "$WorkDir" ]; then
+		echo "Created working directory :" "$WorkDir"
+	else
+		echo "Could not create working dir " "$WorkDir" " Permissions problem?"
+		echo "Exiting..."
+		exit;
+	fi
+
 	cd $WorkDir
 	PConfRepos=$(grep -v ^# /etc/pacman.conf | grep -F [ | grep -v options)
 	RepoSections=$(grep -v ^# /etc/pacman.conf | grep -v options | grep -m1 -A 1000  ^\\[ | tr -d " ")
@@ -210,9 +222,6 @@ else
     exit;
 fi
 
-SysBranch=$(grep -v ^# /etc/pacman.d/mirrorlist | grep -wo -m1 -E "stable|testing|unstable")
-
-echo "System Branch is $SysBranch"
 
 ## Get user Branch
 echo "What is your Branch? Press <S> Stable, <T> Testing "
@@ -222,7 +231,7 @@ read selBranch
 # echo $selBranch " selected"
 
 if [ ! $selBranch ]; then
-    MyBranch="testing"
+    MyBranch="$SysBranch"
 else
     case "$selBranch" in
 	  [Ss])MyBranch="stable";;
@@ -234,21 +243,6 @@ else
 fi
 
 echo "We will configure mirrors for $MyBranch Branch"
-
-case $MyBranch in
-    stable)
-    AwkBranch="2"
-    ;;
-    testing)
-    AwkBranch="3"
-    ;;
-    unstable)
-    AwkBranch="4"
-    ;;
-    *)
-    echo "There is a wrong Branch setting. Exiting..."; exit;
-    ;;
-esac
 
 echo "Get status.json locally"
 curl -s https://repo.manjaro.org/status.json | jq > status.json
@@ -390,7 +384,8 @@ for mirror in $TestMirrors
 # TODO add parameters or conf file for custom options on --verbose, --prefer-secure-protocol, --max-timeout
 if [ $CurlQuiet == true ]; then
     if [ -s result.log ]; then
-	  echo "The results are saved"
+	  echo "These are the resulted mirror servers:"
+	  echo " "
 	  awk '{ print $1, $2, $3 }' result.log | sort -k3 -n -
 	  echo " "
 	  while true; do
@@ -415,7 +410,7 @@ if [ $CurlQuiet == true ]; then
 			  echo "sudo cp -b --suffix old "$WorkDir"/mirrorlist /etc/pacman.d/"
 			  break ;;
 		[Nn]) break ;;
-		   *) echo "   Answer [Y]es or [N]o." ;;
+		   *) echo "   You have to answer [Y]es, [N]o or [L]ocally" ;;
 		esac
 	  done
     else

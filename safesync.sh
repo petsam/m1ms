@@ -172,46 +172,70 @@ elif [ $1 = "-t" ] || [ $1 = "--test" ]; then
 	fi
 
 	cd $WorkDir
-	PConfRepos=$(grep -v ^# /etc/pacman.conf | grep -F [ | grep -v options)
-	RepoSections=$(grep -v ^# /etc/pacman.conf | grep -v options | grep -m1 -A 1000  ^\\[ | tr -d " ")
+	PConfRepos=($(grep -v ^# /etc/pacman.conf | grep -F "[" | grep -v options))
+#	declare -a RepoSections
+	RepoSections=($(grep -v ^# /etc/pacman.conf | grep -v options | grep -m1 -A 1000  ^\\[ | tr -d " "))
 
-	arch=$(uname -m)
+# Debugging
+#	rmdir  "$WorkDir"
+#	exit;
+	Arch=$(uname -m)
 	CurrentRepo=""
+	for Repo in ${PConfRepos[@]}
+		do
+		CurrentRepo=$(echo $Repo | tr  -d '[:punct:]')
+		#echo "Current repo :" $CurrentRepo
+		LocalRepoLine="$LocalRepo""$CurrentRepo".db
+		LocalRepoTime=$(stat -c "%y" $LocalRepoLine | xargs -I {} date  -d {} +"%s")
+		echo Timestamp for $CurrentRepo  is $LocalRepoTime
 
-	for Line in $RepoSections
-	  do
-		Rentry=$(echo $Line | cut -d= -f1)
-		RValue=$(echo $Line | cut -d= -f2)
-		echo "Current entry :" $Rentry
-		echo "Current value :" $RValue
 
-		if [ $Rentry = $RValue ]; then
-		    CurrentRepo=$(echo $Rentry | tr  -d '[:punct:]')
-		    echo "Current repo :"$CurrentRepo
-		    LocalRepo+="/${CurrentRepo}.db"
-		    LocalRepoTime=$(stat -c "%y" $LocalRepo | xargs -I {} date  -d {} +"%s")
-		elif [ $Rentry = "Server" ]; then
-		    repo=$CurrentRepo
-		    echo "Current repo :"$CurrentRepo
-		    echo ${RValue}" "$(curl -sIm 5 $RValue/$repo.db | grep -i ^"Last-Modified" | cut -d ":" -f 2,3,4 | xargs -I {} date -d {} +%s) >> remotestatus.log
-		elif [ $Rentry = "Include" ]; then
-		    repo=$CurrentRepo
-		    #echo "Current repo :"$CurrentRepo
-		    if [ -r $Rvalue ]; then
-			  MirrorList=$(cat ${RValue} | grep "Server?=" | tr  -d " " | cut -d= -f2)
-			  Mirrors=${MirrorList[@]//\$arch/${arch}}
-			  Mirrors=${Mirrors[@]//\$repo/${repo}}
-			  for ServerLine in ${Mirrors[@]}
-				do
-				    ServerLine+="/${repo}.db"
-				    RepoTime=$(curl -sIm 5 $ServerLine | grep -i ^"Last-Modified" | cut -d ":" -f 2,3,4 | xargs -I {} date -d {} +%s)
-				    echo $ServerLine $RepoTime $LocalRepoTime  $(if  (( $RepoTime >= $LocalRepoTime )) ; then echo OK; else echo UNSAFE; fi)
-				    # >> remotestatus.log
-				done
-		    fi
-		fi
-	done
-
+		for Line in ${RepoSections[@]}
+			do
+			Rentry=$(echo $Line | cut -d= -f1)
+			RValue=$(echo $Line | cut -d= -f2)
+			#echo "Current entry :" $Rentry "Current value :" $RValue
+			if [ $Rentry = $RValue ]; then
+				RunningRepo=$(echo $Rentry | tr  -d '[:punct:]')
+				#$CurrentRepo
+			elif [ $Rentry = "Server" ]; then
+				if [ $RunningRepo = $CurrentRepo ]; then
+					#echo "Running repo :"$RunningRepo
+					echo ${RValue}" "$(curl -sIm 5 $RValue/$CurrentRepo.db | grep -i ^"Last-Modified" | cut -d ":" -f 2,3,4 | xargs -I {} date -d {} +%s) >> remotestatus.log
+				fi
+			elif [ $Rentry = "Include" ]; then
+				if [ $RunningRepo = $CurrentRepo ]; then
+					#echo "Running repo :"$RunningRepo
+					#repo=$CurrentRepo
+					#echo "Current repo :"$CurrentRepo
+					if [ -r $RValue ]; then
+						MirrorList=($(cat ${RValue} | tr  -d " " | grep "Server=" | cut -d= -f2))
+						for ServerLine in ${MirrorList[@]}
+							do
+							Mirror=${ServerLine/\$arch/"$Arch"}
+							Mirror=${Mirror/\$repo/"$CurrentRepo"}
+							Mirror=$Mirror"/"$CurrentRepo".db"
+							#echo $Mirror
+							#exit;
+							RepoTime=$(curl -sIm 37 $Mirror | grep -i ^"Last-Modified" | cut -d ":" -f 2,3,4 | xargs -I {} date -d {} +%s)
+							if [ $RepoTime ]; then
+								if  (( $RepoTime >= $LocalRepoTime )) ; then
+									echo $Mirror $RepoTime $LocalRepoTime OK >> remotestatus.log
+								else
+									echo $Mirror $RepoTime $LocalRepoTime UNSAFE >> remotestatus.log
+									echo $Mirror $RepoTime $LocalRepoTime UNSAFE
+								fi
+							else
+								echo $Mirror is not responding. UNSAFE
+								echo $Mirror UNSAFE >> remotestatus.log
+							fi
+							done
+					fi
+				fi
+			fi
+			done
+		done
+	echo "The results are saved at " "$WorkDir""/remotestatus.log"
 	exit;
 elif [ $1 = "-h" ] || [ $1 = "--help" ]; then
     echo -e "$SfsHelp"

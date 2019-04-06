@@ -25,7 +25,7 @@ Reads mirror status from repo.manjaro.org, filters out currently in-active serve
 
 * `-n | --next`
 
-Checks current system's mirrorlist servers repo DBs timestamp and 
+Checks current system's mirrorlist servers repo DBs timestamp and
   * accepts as _safe_ and enables the first one (if it is not already) more recent than system's DBs timestamps
   * disables each one that has older timestamp than system's DBs, as _unsafe_.
 
@@ -34,11 +34,11 @@ Checks current system's mirrorlist servers repo DBs timestamp and
 Tests mirror servers for speed or whatever (WIP), similarly to `--init`
 
 ## Scope and perspective
-The perspective used for a proper and safe package update, avoiding accidental partial updates is to *always have ONLY ONE active server in the mirrorlist and only change it when needed* (server is not responding, need of the latest Manjaro updates as soon as posible etc.). The problem arises when your current active mirror has temporary problems. If there are more than one servers in the mirrorlist, pacman uses the next one. During this change, it is not checked whether the new assigned server has the same update status as the default one (at least, this is what I think, since I haven't read or heard it is; I would be happy if I find out I was wrong!). Manjaro mirror servers have various update/sync frequencies. Some update every hour (or less) while others once a day, depending on the providers. In case you configure your mirrors depending on their up-to-date status, you may have different results depending on the time of configuration and the chosen mirrors/countries. For example: 
+The perspective used for a proper and safe package update, avoiding accidental partial updates is to *always have ONLY ONE active server in the mirrorlist and only change it when needed* (server is not responding, need of the latest Manjaro updates as soon as posible etc.). The problem arises when your current active mirror has temporary problems. If there are more than one servers in the mirrorlist, pacman uses the next one. During this change, it is not checked whether the new assigned server has the same update status as the default one (at least, this is what I think, since I haven't read or heard it is; I would be happy if I find out I was wrong!). Manjaro mirror servers have various update/sync frequencies. Some update every hour (or less) while others once a day, depending on the providers. In case you configure your mirrors depending on their up-to-date status, you may have different results depending on the time of configuration and the chosen mirrors/countries. For example:
 
-A (the) Greek mirror syncs once a day at about 12:00 UTC, while a french mirror every one hour. 
+A (the) Greek mirror syncs once a day at about 12:00 UTC, while a french mirror every one hour.
 
-* If I run `pacman mirrors` or check on the repo webpage at 14:00 UTC, I will choose the Greek server as it will be up-to-date and since it's the nearest to me, it's my best choice for speed, as well as the French mirror, but because the French mirror is faster, it goes at the top of the mirrorlist (if I rank for speed), with the Greek one as second. 
+* If I run `pacman mirrors` or check on the repo webpage at 14:00 UTC, I will choose the Greek server as it will be up-to-date and since it's the nearest to me, it's my best choice for speed, as well as the French mirror, but because the French mirror is faster, it goes at the top of the mirrorlist (if I rank for speed), with the Greek one as second.
 * Then there is a Manjaro update at 22:00 UTC and I update my system at 24:00 UTC (using the French mirror).
 * Next day at about 08:00-10:00 UTC, I try to install a new package or update the system. If at that time the French mirror is not responding, `pacman` will fallback to the Greek mirror, which has older packages. If you don't use `-y` pacman parameter, you will not even notice an error message for "local packages are newer than remote ones" and you will get into a "partially updated" system!!
 
@@ -55,12 +55,11 @@ For whoever finds this useful, I will be happy. For the rest, do your maintenanc
 
 Please report any bugs and ideas for relevant useful improvements and features.
 
-Most of all, I would appreciate advice from experienced users in Bash scripting or code in general, for improving my script/command methods and learning to write more efficient, safer and smarter code.
-
-I know I lack experience on many, like:
-* Error traping/control
-* Variables escaping/quoting
-* For/until loops etc.
-* Picking the better tool for filtering/sorting etc. (awk, grep, find...)
-* and more..
+## Manual installation (suggested)
+```
+curl -o safesync https://raw.githubusercontent.com/petsam/safesync/master/safesync.sh
+chmod +x safesync
+sudo cp safesync /usr/local/bin/
+```
+You may save the script to any folder in your $PATH, in order to call it from any terminal.
 

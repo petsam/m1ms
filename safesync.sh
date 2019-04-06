@@ -24,6 +24,30 @@
 
 # set -e
 
+# Check for dependencies
+
+declare -a Deps
+Deps=(jq pkexec curl awk)
+i=0
+for dep in ${Deps[@]}
+	do
+		IsInstalled=$(which $dep 2>/dev/null)
+		if [ -z $IsInstalled  ]; then
+			if [ "$dep" = "pkexec" ]; then
+				DepsMissing[$i]="polkit"
+			else
+				DepsMissing[$i]="$dep"
+			fi
+			(( i+=1 ))
+		fi
+	done
+if [ ${#DepsMissing[@]} -ge 1 ]; then
+	echo "Missing dependencies! Please install" ${DepsMissing[@]}
+	exit;
+else
+	echo "Checked for dependencies. OK!"
+fi
+
 # Don't run as root or sudo
 if (( $(id -u) == 0 )); then
     echo "You should not run this script as root"
@@ -66,12 +90,13 @@ if [ $# -eq 0 ]; then
     echo -e "$SfsHelp"
     exit;
 elif [ $1 = "-i" ] || [ $1 = "--init" ]; then
-    echo "Starting creation of mirrorlist"
-    # Create work directory
+	echo "Starting creation of mirrorlist"
+	# Create work directory
+	DateSuffix=$(date +%s)
 	if [ -w /tmp ];then
-		WorkDir=/tmp/safesync-$(date +%s)
+		WorkDir=/tmp/safesync-"$DateSuffix"
 	else
-		WorkDir=$HOME/.local/tmp/safesync-$(date +%s)
+		WorkDir=$HOME/.local/tmp/safesync-"$DateSuffix"
 	fi
 	mkdir -p "$WorkDir"
 	if [ -d "$WorkDir" ]; then
@@ -423,7 +448,7 @@ if [ $CurlQuiet == true ]; then
 			  # TODO run safesync -n to check validity of first mirror
 			  #echo " The mirrorlist has been created at "$WorkDir"/mirrorlist"
 			  echo "Copying to system..."
-			  pkexec cp -b --suffix ."$(date +%s)" "$WorkDir"/mirrorlist /etc/pacman.d/
+			  pkexec cp -b --suffix ."$DateSuffix" "$WorkDir"/mirrorlist /etc/pacman.d/
 			  # TODO ask to delete workdir if it is local or not in memory
 			  break ;;
 		[Ll]) echo $SfsMirrorlistHeading > mirrorlist
@@ -431,7 +456,7 @@ if [ $CurlQuiet == true ]; then
 			  sed -i '2 s/^#//' mirrorlist
 			  echo " The mirrorlist has been created at "$WorkDir"/mirrorlist"
 			  echo "Use this command to replace current mirrorlist (the old one is backed up)"
-			  echo "sudo cp -b --suffix old "$WorkDir"/mirrorlist /etc/pacman.d/"
+			  echo "sudo cp -b --suffix ."$DateSuffix" "$WorkDir"/mirrorlist /etc/pacman.d/"
 			  break ;;
 		[Nn]) break ;;
 		   *) echo "   You have to answer [Y]es, [N]o or [L]ocally" ;;

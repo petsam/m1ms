@@ -76,8 +76,8 @@ else
 fi
 
 LocalRepo="/var/lib/pacman/sync/"
-DBRepos=$(for r in $(ls /var/lib/pacman/sync/*.db); do repo=${r##*/}; echo  ${repo%.db}; done)
-
+#DBRepos=$(for r in $(ls /var/lib/pacman/sync/*.db); do repo=${r##*/}; echo  ${repo%.db}; done)
+DBRepos=$(grep  ^\\[ /etc/pacman.conf | tr  -d '[:punct:] ' | grep -v options)
 # TODO add option parameter for a custom/local mirrorlist to test (--test)
 #MirrorList=mirrorlist
 MirrorList=/etc/pacman.d/mirrorlist
@@ -108,72 +108,107 @@ elif [ $1 = "-i" ] || [ $1 = "--init" ]; then
 	fi
 	cd $WorkDir
 elif [ $1 = "-n" ] || [ $1 = "--next" ]; then
-    PConfRepos=$(grep -v ^# /etc/pacman.conf | grep -F [ | grep -v options)
-    RepoSections=$(grep -v ^# /etc/pacman.conf | grep -v options | grep -m1 -A 1000  ^\\[ | tr -d " ")
-    arch=$(uname -m)
-    CurrentRepo=""
-    if [ ! -f $MirrorList ]; then echo "MirrorList was not found. Exiting..." ; exit; fi
-    MListServers=$(grep "Server" $MirrorList | tr -d " " | cut -d "=" -f 2)
-    # Check active servers in mirrorlist
-    echo "Local repos: " ${DBRepos[@]}
-    #echo ${MListServers[@]}
-
+	arch=$(uname -m)
+	CurrentRepo=""
+	if [ ! -f $MirrorList ]; then echo "MirrorList was not found. Exiting..." ; exit; fi
+	MListServers=$(grep "Server" $MirrorList | tr -d " " | cut -d "=" -f 2)
+	# Check active servers in mirrorlist
+	echo "Local repos: " ${DBRepos[@]}
+	#echo ${MListServers[@]}
+	SafeMirrorList=Unknown
+	DisabledOldServer=Unknown
 	for server in ${MListServers[@]}
 		do
-			IsSafe=""
-			# Construct sed server regexp variable
-			SedServer=${server#*//}
-			SedServer=${SedServer/"/"*/}
-			SedServer=${SedServer//"."/"\."}
-			echo $server
-			echo ${DBRepos[@]}
-			for crepo in ${DBRepos[@]}
-				do
-					# Construct curl server line variable
-					ServerLine=${server//\$arch/${arch}}
-					ServerLine=${ServerLine//\$repo/${crepo}}
-					LocalCRepo=$LocalRepo
-					#echo "Current repo :"$crepo
-					LocalCRepo+="/${crepo}.db"
-					LocalCRepoTime=$(stat -c "%y" $LocalCRepo | xargs -I {} date  -d {} +"%s")
-					ServerLine+="/${crepo}.db"
-					RepoTime=$(curl -sIm 5 $ServerLine | grep -i ^"Last-Modified" | cut -d ":" -f 2,3,4 | xargs -I {} date -d {} +%s)
-
-					if ! [ $RepoTime ]; then
-						echo $crepo ": Remote Time is null"
-						IsSafe="UNSAFE"
-						echo $crepo " is " "$IsSafe"
-						if [[ $(grep -e "$SedServer" "$MirrorList" | tr -d " " | grep -c -e "^Server") -ge 1 ]]; then
-							pkexec sed -i '/'"$SedServer"'/ s/^Server/#Server/' "$MirrorList"
-							echo "$server is UNSAFE and was disabled."
-						fi
-						continue 2
-						#echo "Error status: " $?
-					elif  [[ $RepoTime -ge $LocalCRepoTime ]] ; then
-						IsSafe="OK"
-						echo $crepo $RepoTime $LocalCRepoTime  $IsSafe
-					else
-						IsSafe="UNSAFE"
-						echo $crepo " is " "$IsSafe"
-						echo $crepo $RepoTime $LocalCRepoTime  $IsSafe
-						if [[ $(grep -e "$SedServer" "$MirrorList" | tr -d " " | grep -c -e "^Server") -ge 1 ]]; then
-							pkexec sed -i '/'"$SedServer"'/ s/^Server/#Server/' "$MirrorList"
-						fi
-						echo "$server is UNSAFE and was disabled."
-						continue 2
-					fi
-				done
-			if [[ $IsSafe == OK ]]; then
-				echo $server " is " "$IsSafe"
-				if [[ $(grep -e "$SedServer" "$MirrorList" | tr -d " " | grep -c -e ^#Server) -ge 1 ]]; then
-					pkexec sed -i '/'"$SedServer"'/ s/^#*Server/Server/' "$MirrorList"
-					echo "Enabled in mirrorlist!"
-				fi
+			if [ $SafeMirrorList = true ] && [ $DisabledOldServer = true ] ; then
+				echo "Mirrorlist is safe!"
 				exit;
+			else
+				IsSafe=""
+				# Construct sed server regexp variable
+				SedServer=${server#*//}
+				SedServer=${SedServer/"/"*/}
+				SedServer=${SedServer//"."/"\."}
+				echo $server
+				if [ $SafeMirrorList = true ] ; then
+					IsServerSafe="UNSAFE"
+				else
+				echo ${DBRepos[@]}
+					for crepo in ${DBRepos[@]}
+					do
+						# Construct curl server line variable
+						ServerLine=${server//\$arch/${arch}}
+						ServerLine=${ServerLine//\$repo/${crepo}}
+						LocalCRepo=$LocalRepo
+						#echo "Current repo :"$crepo
+						LocalCRepo+="/${crepo}.db"
+						LocalCRepoTime=$(stat -c "%y" $LocalCRepo | xargs -I {} date  -d {} +"%s")
+						ServerLine+="/${crepo}.db"
+						RepoTime=$(curl -sIm 5 $ServerLine | grep -i ^"Last-Modified" | cut -d ":" -f 2,3,4 | xargs -I {} date -d {} +%s)
+						IsServerSafe="OK"
+						if ! [ $RepoTime ]; then
+							echo $crepo ": Remote Time is null"
+							IsSafe="UNSAFE"
+							IsServerSafe="UNSAFE"
+							echo $crepo " is " "$IsSafe"
+							#echo "Error status: " $?
+						elif  [ $RepoTime -ge $LocalCRepoTime ] ; then
+							IsSafe="OK"
+							IsServerSafe="OK"
+							echo $crepo $RepoTime $LocalCRepoTime  $IsSafe
+						else
+							IsSafe="UNSAFE"
+							IsServerSafe="UNSAFE"
+							echo $crepo " is " "$IsSafe"
+							echo $crepo $RepoTime $LocalCRepoTime  $IsSafe
+						fi
+					done
+					echo $server " is " "$IsServerSafe"
+				fi
+				if [[ $IsServerSafe == OK ]]; then
+					if [[ $(grep -e "$SedServer" "$MirrorList" | tr -d " " | grep -c -e ^#Server) -ge 1 ]]; then
+						pkexec sed -i '/'"$SedServer"'/ s/^#*Server/Server/' "$MirrorList"
+						CommandStatus=$?
+						if [ $CommandStatus -eq 0 ]; then
+							echo "Enabled in mirrorlist!"
+							SafeMirrorList=true
+						elif [ $CommandStatus -eq 127 ]; then
+							echo "Aborted by the user. Error: " $CommandStatus
+							echo "Failed to enable server!"
+							continue;
+						else
+							echo "Polkit returned code " $CommandStatus
+							echo "Failed to enable server!"
+							#continue;
+						fi
+					else
+						SafeMirrorList=true
+						DisabledOldServer=true
+					fi
+				elif [[ $IsServerSafe == UNSAFE ]]; then
+					if [[ $(grep -e "$SedServer" "$MirrorList" | tr -d " " | grep -c -e "^Server") -ge 1 ]]; then
+						pkexec sed -i '/'"$SedServer"'/ s/^Server/#Server/' "$MirrorList"
+						CommandStatus=$?
+						if [ $CommandStatus -eq 0 ]; then
+							echo "$server is UNSAFE and was disabled."
+							DisabledOldServer=true
+						elif [ $CommandStatus -eq 127 ]; then
+							echo "Aborted by the user. Polkit responded: " $CommandStatus
+							echo "Failed to disable server! You have to manually disable it, or use your brain!"
+							echo "YOU ARE ON YOUR OWN!!!"
+							#continue;
+						else
+							echo "Failed to disable server! You have to manually disable it, or use your brain!"
+							echo "YOU ARE ON YOUR OWN!!!"
+							#continue;
+						fi
+					fi
+
+				fi
 			fi
 		done
 	# TODO Check for an active good mirror and if not, warn for recreating mirrorlist with --init, or pass directly (break the 'if')
-	if $(grep ^Server "$MirrorList"); then
+	EnabledServers=$(grep -c ^Server "$MirrorList")
+	if [ $EnabledServers -eq 0 ]; then
 		echo "There is no enabled Server in the mirrorlist. Recreate mirrorlist with \"safesync -i\" "
 	fi
 	exit;
@@ -198,7 +233,6 @@ elif [ $1 = "-t" ] || [ $1 = "--test" ]; then
 
 	cd $WorkDir
 	PConfRepos=($(grep -v ^# /etc/pacman.conf | grep -F "[" | grep -v options))
-#	declare -a RepoSections
 	RepoSections=($(grep -v ^# /etc/pacman.conf | grep -v options | grep -m1 -A 1000  ^\\[ | tr -d " "))
 
 # Debugging

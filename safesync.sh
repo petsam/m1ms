@@ -386,7 +386,7 @@ else
 				for GrpCountry in ${Group[@]}
 					do
 						#echo $GrpCountry
-						if [[ -f proberepos.conf ]]; then
+						if [[ -a proberepos.conf ]]; then
 							if  [[ $(awk '{print $2}' proberepos.conf | grep -ciw $GrpCountry) -eq 0 ]]; then
 								awk -v country="$GrpCountry" '{ if ( $1 == country )  print $2, $1 }' goodmirrors.log >> proberepos.conf
 							fi
@@ -401,13 +401,17 @@ else
 					done
 			else
 				echo $Country
-				if [[ $(awk '{print $2}' proberepos.conf | grep -ciw $Country) -eq 0 ]]; then
-					awk -v country="$Country" '{ if ( $1 == country )  print $2, $1 }' goodmirrors.log >> proberepos.conf
-					if [ "$RepoCountries" = "" ]; then
-						RepoCountries=$Country
-					else
-						RepoCountries="$RepoCountries, $Country"
+				if [[ -a proberepos.conf ]]; then
+					if [[ $(awk '{print $2}' proberepos.conf | grep -ciw $Country) -eq 0 ]]; then
+						awk -v country="$Country" '{ if ( $1 == country )  print $2, $1 }' goodmirrors.log >> proberepos.conf
 					fi
+				else
+					awk -v country="$Country" '{ if ( $1 == country )  print $2, $1 }' goodmirrors.log >> proberepos.conf
+				fi
+				if [ "$RepoCountries" = "" ]; then
+					RepoCountries=$Country
+				else
+					RepoCountries="$RepoCountries, $Country"
 				fi
 			fi
 		done
@@ -451,10 +455,11 @@ for mirror in $TestMirrors
         echo "$mirror"
         # SizeGood=false
         # curl -SsI -o mheader "$mirror""$MyBranch"/extra/"$Arch"/extra.files.tar.gz
+        ErrFile=$(echo "$mirror" | cut -d\/ -f3)
         ConGood=$(curl -SsI -w "%{http_connect}" "$mirror""$MyBranch"/extra/"$Arch"/extra.files.tar.gz | grep -iw ^http | cut -d\  -f2)
         echo "Response is " "$ConGood"
         if (( ConGood >= 200 )) && (( ConGood < 400 )) ; then
-		curl -m 37 --stderr probing.err $CurlProto -f -Ss -w "$CurlFlags" -o /dev/null --url "$mirror""$MyBranch"/extra/"$Arch"/extra.files.tar.gz  >> probing.log
+		curl -m 90 --stderr "$ErrFile".err $CurlProto -f -Ss -w "$CurlFlags" -o /dev/null --url "$mirror""$MyBranch"/extra/"$Arch"/extra.files.tar.gz  >> probing.log
 		#echo "Error code " $?
 		#echo "Finished probing server"
 		if [ $CurlQuiet == true ]; then
@@ -474,7 +479,7 @@ if [ $CurlQuiet == true ]; then
 	  while true; do
 		read -p "Do you want to save these mirrors as your system mirrorlist?
 		[Y]es [N]o [L]ocally: " SaveMirrorList
-		echo "$MyBranch"
+		# echo "$MyBranch"
 		case $SaveMirrorList in
 		[Yy]) echo $SfsMirrorlistHeading > mirrorlist
 			  awk '{ print $1, $2, $3 }' result.log | sort -k3 -n - | awk -v branch="$MyBranch" ' { print "#Server = " $1 branch "/$repo/$arch" }' >> mirrorlist
@@ -510,14 +515,14 @@ else
     echo "View the full output at "$WorkDir"/probing.log"
 fi
 
-if [ -s probing.err ]; then
+if [ $(grep -i curl *.err | grep -c err) -ge 1 ]; then
     echo "=================================================================="
     echo " "
-    cat probing.err
+    grep -i curl *.err
     echo " "
     echo "=================================================================="
-    echo "There was an error."
-    echo "Please, report this bug to the script author."
+    echo "There were connection errors."
+    echo "If you thing it is a bug, please report it to the script author."
 fi
 
 exit

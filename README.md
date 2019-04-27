@@ -1,4 +1,4 @@
-# safesync
+# m1ms
 
 > This script is for *Manjaro* systems on which configures/creates or tests system's mirrorlist.
 It can also change the active mirror in mirrorlist ("on-the-fly"), protecting from selecting an unsafe mirror.
@@ -12,12 +12,12 @@ It can also change the active mirror in mirrorlist ("on-the-fly"), protecting fr
 * pkexec (optional for writing system mirrorlist, provided by `polkit`)
 
 ```
-Safesync creates Manjaro mirrorlist and changes mirrors safely
+M1mS creates Manjaro mirrorlist and changes mirrors safely
     Options:
-    safesync {-i --init} (Re)Initialize the mirrorlist sorted by fastest
-    safesync {-n --next} Select the next (safe) mirror server in /etc/pacman.d/mirrorlist
-    safesync {-t --test} Test current active servers status
-    safesync (-h --help) This help message information
+    m1ms {-i --init} (Re)Initialize the mirrorlist sorted by fastest
+    m1ms {-n --next} Select the next (safe) mirror server in /etc/pacman.d/mirrorlist
+    m1ms {-t --test} Test current active servers status
+    m1ms (-h --help) This help message information
 ```
 * `-i | --init`
 
@@ -42,11 +42,11 @@ A (the) Greek mirror syncs once a day at about 12:00 UTC, while a french mirror 
 * Then there is a Manjaro update at 22:00 UTC and I update my system at 24:00 UTC (using the French mirror).
 * Next day at about 08:00-10:00 UTC, I try to install a new package or update the system. If at that time the French mirror is not responding, `pacman` will fallback to the Greek mirror, which has older packages. If you don't use `-y` pacman parameter, you will not even notice an error message for "local packages are newer than remote ones" and you will get into a "partially updated" system!!
 
-With SafeSync method, you are supposed to have only one enabled mirror in the mirrorlist. Then, whenever the server is unusable, you run `safesync --next` and in a few seconds you have the fastest and sefest (for your system) mirror enabled, while the _unsafe_ mirror is disabled. Also, if you always use this command before any system or package syncing action, you will always be sure you will *never* have a _partially updated_ system!
+With M1mS method, you are supposed to have only one enabled mirror in the mirrorlist. Then, whenever the server is unusable, you run `m1ms --next` and in a few seconds you have the fastest and sefest (for your system) mirror enabled, while the _unsafe_ mirror is disabled. Also, if you always use this command before any system or package syncing action, you will always be sure you will *never* have a _partially updated_ system!
 
-You may use safesync either in your manually configured mirrorlist, or even in combination with a `pacman-mirrors` created one, or of course... exclusively, as it can create a preferred servers list in a very easy interactive procedure, with 9 prefixed country groups (by regions) and a choice to just enter a group number, or enter country names (with or without capitalization format, or spaces, or underscores), or a combination of both. You may write the result to pacman mirrorlist (getting root privileges), keeping a copy of the old one, or save locally and use it as you like.
+You may use m1ms either in your manually configured mirrorlist, or even in combination with a `pacman-mirrors` created one, or of course... exclusively, as it can create a preferred servers list in a very easy interactive procedure, with 9 prefixed country groups (by regions) and a choice to just enter a group number, or enter country names (with or without capitalization format, or spaces, or underscores), or a combination of both. You may write the result to pacman mirrorlist (getting root privileges), keeping a copy of the old one, or save locally and use it as you like.
 
-A possible workflow for using safesync as your main mirrorlist maintenance tool can be:
+A possible workflow for using m1ms as your main mirrorlist maintenance tool can be:
 1. Create your mirrorlist initially, choosing from any available countries in repo.manjaro.org. (`--init`). This will save a sorted list of servers by speed (fastest first) and enable the first one.
 2. After initial creation, run `--next` to verify the active server is _safe_ (DBs are same or newer than your current local DBs). If not, it will disable the current (_unsafe_) and enable the _next safe_ server.
 3. That's it, until you notice pacman reporting unable to update, or very slow downloads etc. If you decide to change the active server, only run `--next` and check again with `pacman`.
@@ -57,9 +57,12 @@ Please report any bugs and ideas for relevant useful improvements and features.
 
 ## Manual installation (suggested)
 ```
-curl -o safesync https://raw.githubusercontent.com/petsam/safesync/master/safesync.sh
-chmod +x safesync
-sudo cp safesync /usr/local/bin/
+curl -o m1ms https://raw.githubusercontent.com/petsam/m1ms/master/m1ms.sh
+chmod +x m1ms
+sudo cp m1ms /usr/local/bin/
 ```
 You may save the script to any folder in your $PATH, in order to call it from any terminal.
 
+## Contributors
+@petsam (aka Petros Samaras - Πέτρος Σαμαράς)
+@sgse (Github) (aka sgs) - testing, images

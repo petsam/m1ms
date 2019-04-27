@@ -57,7 +57,7 @@ Please report any bugs and ideas for relevant useful improvements and features.
 
 ## Manual installation (suggested)
 ```
-curl -o m1ms https://raw.githubusercontent.com/petsam/m1ms/master/m1ms.sh
+curl -o m1ms https://raw.githubusercontent.com/petsam/m1ms/master/m1ms
 chmod +x m1ms
 sudo cp m1ms /usr/local/bin/
 ```
